@@ -27,7 +27,7 @@ export class AppComponent {
   readonly menus: Array<PoMenuItem> = [
     { label: 'Home', action: () => this.router.navigate(['']), icon: 'po-icon-home', shortLabel: 'Home' },
     { label: 'Tutores', action: () => this.router.navigate(['owners']), icon: 'po-icon-users', shortLabel: 'Tutores'},
-    { label: 'Pets', icon: 'po-icon-eye', shortLabel: 'Pets' },
+    { label: 'Pets', action: () => this.router.navigate(['pets']), icon: 'po-icon-eye', shortLabel: 'Pets'},
     { label: 'Sair', action: this.closeApp.bind(this), icon: 'po-icon-exit', shortLabel: 'Sair' }
   ];
 

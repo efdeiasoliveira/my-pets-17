@@ -5,6 +5,7 @@
 export const environment = {
   production: false,
   ownersAPI: "/api/v1/owners",
+  petsAPI: "/api/v1/pets",
    // "https://192.168.0.224:10091/rest"
 };
 

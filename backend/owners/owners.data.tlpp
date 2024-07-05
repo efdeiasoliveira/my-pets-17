@@ -1,0 +1,259 @@
+#include "tlpp-core.th"
+#include "FWMVCDEF.CH"
+
+namespace owners
+
+/*/{Protheus.doc} OwnersData
+    (Manipula os dados)
+    @author Efdéias Oliveira
+    @since 27/06/2024
+    @version 1.0
+    /*/
+Class OwnersData From FwAdapterBaseV2
+
+    Public Data jResponse as Json
+    Public Data oHashFields as Object
+
+    Public Method new() as Object
+    Public Method get()
+    Public Method setHashFields()
+    Public Method handleOwners() as Json
+
+    Public Method setResponse()
+
+EndClass
+
+
+/*/{Protheus.doc} new
+    (Obtém uma nova instância da classe)
+    @author Efdéias Oliveira
+    @since 27/06/2024
+    @version 1.0
+    @param cVerb, character, verbo da requisição HTTP
+    @param lList, logical, determina se retornará uma lista ou um registro
+    @return Self, object, estancia da classe
+    /*/
+Method new(cVerb as Character, lList as Logical) as Object Class OwnersData
+
+    Default lList := .T.
+
+    ::jResponse := JsonObject():new()
+
+    _Super:new(cVerb, lList)
+
+Return Self
+
+
+/*/{Protheus.doc} get
+    (Retorna os dados)
+    @author Efdéias Oliveira
+    @since 27/06/2024
+    @version 1.0
+    @param nPage, numeric, Número da Pagina
+    @param nPageSize, numeric, Tamanho da página
+    @param aFilter, array, Lista de Filtros a serem realizados
+    @param cFields, character, Campos que serão retornados
+    @param cSort, character, Ordenação dos campos
+    @param cId, character, ID do registro especifico
+    /*/
+Method get(nPage as Numeric, nPageSize as Numeric, aFilter as Array, cFields as Character, cSort as Character, cId as Character) Class OwnersData
+
+    Local aArea   as Array
+    Local cWhere  as Character
+
+    aArea   := fwGetArea()
+
+    cWhere := " ZSB_FILIAL = '" + fwXFilial("ZSB") + "'"
+
+    If (! empty(cId))
+        cWhere += " AND ZSB_ID = '" + cId + "'"
+    EndIf
+
+    cWhere += " AND D_E_L_E_T_ = ''"
+
+    addMapFields(self)
+
+    If (! Empty(aFilter))
+        ::setUrlFilter(aFilter)
+    EndIf
+
+    If (! Empty(cFields))
+        ::setFields(cFields)
+    EndIf
+
+    If (! Empty(cSort))
+        ::setOrderQuery(cSort)
+    EndIf
+
+    ::setPage(nPage)
+    ::setPageSize(nPageSize)
+    ::setQuery(getQuery())
+    ::setWhere(cWhere)
+    ::setOrder("ZSB_ID")
+
+    If (::execute())
+        ::fillGetResponse()
+    EndIf
+
+    fwRestArea(aArea)
+    fwFreeArray(aArea)
+
+Return Nil
+
+
+
+/*/{Protheus.doc} handleOwners
+    (Inclui, altera ou exclui um registro)
+    @author Efdéias Oliveira
+    @since 28/06/2024
+    @version 1.0
+    @param nOperation, numeric, Operação
+    @param jBody, json, Body da Requisição
+    @param cId, character, ID do registro
+    @return lReturn, logical, Processo OK
+    /*/
+Method handleOwners(nOperation as Numeric, jBody as Json, cId as Character) as Json Class OwnersData
+
+    Local aData     as Array
+    Local lReturn   as Logical
+    Local oModel    as Object
+    Local oModelZSB as Object
+
+    lReturn := .T.
+    ::setHashFields()
+
+    If (nOperation <> 5)
+        aData := utils.rest.u_buildData(jBody, self)
+    EndIf
+
+    If (nOperation <> 3)
+        DbSelectArea("ZSB")
+        DbSetOrder(1)
+        If (! MsSeek(fwXFilial("ZSB") + cId))
+            lReturn := .F.
+            ::jResponse := utils.rest.u_setError(400, "Registro não encontrado: " + cId)
+        EndIf
+    EndIf
+
+    If (lReturn)
+        oModel := fwLoadModel("MPETS002")
+        oModelZSB := oModel:getModel("ZSBMASTER")
+
+        oModel:setOperation(nOperation)
+
+        oModel:Activate()
+        If (oModel:isActive())
+            If (oModel:getOperation() <> MODEL_OPERATION_DELETE)
+                lReturn := utils.rest.u_setValue(aData, oModelZSB, "ZSB_ID")
+            EndIf
+        Else
+            lReturn := .F.
+        EndIf
+
+        If (lReturn)
+            lReturn := oModel:vldData()
+        EndIf
+
+        If (lReturn)
+            lReturn := oModel:commitData()
+        EndIf
+
+        If (lReturn)
+            ::setResponse()
+        Else
+            ::jResponse := utils.rest.u_setError(400, utils.rest.u_getErrorMessage(oModel))
+        EndIf
+
+        oModel:deActivate()
+    EndIf
+
+    fwFreeObj(oModelZSB)
+    fwFreeObj(oModel)
+    fwFreeArray(aData)
+
+Return ::jResponse
+
+
+/*/{Protheus.doc} setHashFields
+    (Realiza o DePara dos campos para utilizar no MVC)
+    @author Efdéias Oliveira
+    @since 28/06/2024
+    @version 1.0
+    /*/
+Method setHashFields() Class OwnersData
+
+    ::oHashFields := THashMap():new()
+
+    ::oHashFields:set("id"   , "ZSB_ID"   )
+    ::oHashFields:set("name" , "ZSB_NAME" )
+    ::oHashFields:set("rg"   , "ZSB_RG"   )
+    ::oHashFields:set("cpf"  , "ZSB_CPF"  )
+    ::oHashFields:set("email", "ZSB_EMAIL")
+    ::oHashFields:set("tel1" , "ZSB_TEL1" )
+    ::oHashFields:set("tel2" , "ZSB_TEL2" )
+
+Return Nil
+
+
+
+/*/{Protheus.doc} setResponse
+    (Função responsável por montar o JSOn de retorno quando deu sucesso)
+    @type  Method
+    @author Efdéias Oliveira
+    @since 28/06/2024
+    @version 1.0
+/*/
+Method setResponse() Class OwnersData
+
+    ::jResponse["id"   ] := rTrim(ZSB->ZSB_ID)
+    ::jResponse["name" ] := fwHttpEncode(rTrim(ZSB->ZSB_NAME))
+    ::jResponse["rg"   ] := rTrim(ZSB->ZSB_RG)
+    ::jResponse["cpf"  ] := rTrim(ZSB->ZSB_CPF)
+    ::jResponse["email"] := fwHttpEncode(rTrim(ZSB->ZSB_EMAIL))
+    ::jResponse["tel1" ] := rTrim(ZSB->ZSB_TEL1)
+    ::jResponse["tel2" ] := rTrim(ZSB->ZSB_TEL2)
+
+Return Nil
+
+
+/*/{Protheus.doc} addMapFields
+    (Determina quais propriedades x campos do protheus serão apresentados)
+    @type  Static Function
+    @author Efdéias Oliveira
+    @since 27/06/2024
+    @version 1.0
+    @param oSelf, object, instancia da classe
+/*/
+Static Function addMapFields(oSelf as Object)
+
+    oSelf:addMapFields("id"   , "ZSB_ID"   , .T., .T., { "ZSB_ID"   , "C", tamSX3("ZSB_ID")[1]  , 0 })
+    oSelf:addMapFields("name" , "ZSB_NAME" , .T., .F., { "ZSB_NAME" , 'C', tamSX3('ZSB_NAME')[1] , 0 })
+    oSelf:addMapFields("rg"   , "ZSB_RG"   , .T., .F., { "ZSB_RG"   , 'C', tamSX3('ZSB_RG')[1]   , 0 })
+    oSelf:addMapFields("cpf"  , "ZSB_CPF"  , .T., .F., { "ZSB_CPF"  , 'C', tamSX3('ZSB_CPF')[1]  , 0 })
+    oSelf:addMapFields("email", "ZSB_EMAIL", .T., .F., { "ZSB_EMAIL", 'C', tamSX3('ZSB_EMAIL')[1], 0 })
+    oSelf:addMapFields("tel1" , "ZSB_TEL1" , .T., .F., { "ZSB_TEL1" , 'C', tamSX3('ZSB_TEL1')[1] , 0 })
+    oSelf:addMapFields("tel2" , "ZSB_TEL2" , .T., .F., { "ZSB_TEL2" , 'C', tamSX3('ZSB_TEL2')[1] , 0 })
+
+Return Nil
+
+
+
+/*/{Protheus.doc} getQuery
+    (Retorna a query de acordo com a tabela)
+    @type  Static Function
+    @author Efdéias Oliveira
+    @since 27/06/2024
+    @version 1.0
+    @param , param_type, param_descr
+    @return cQuery, character, Query
+/*/
+Static Function getQuery()
+
+    Local cQuery as Character
+
+    cQuery := " SELECT #QueryFields#"
+    cQuery += " FROM " + RetSqlTab("ZSB")
+    cQuery += " WHERE #QueryWhere#"
+
+Return cQuery
+

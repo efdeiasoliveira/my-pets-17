@@ -1,0 +1,254 @@
+#include "tlpp-core.th"
+
+namespace Pets
+
+/*/{Protheus.doc} PetsController
+    (API para Consultar, Incluir, Alterar e Excluir)
+    @author Efdéias Oliveira
+    @since 27/06/2024
+    @version 1.0
+    /*/
+Class PetsController
+
+    Data jResponse as Json
+    Data oService  as Object
+
+    Public Method new() as Object
+
+    @Get( '/api/v1/pets' )
+    Public Method get() as Logical
+
+    @Get( '/api/v1/pets/:id' )
+    Public Method getById() as Logical
+
+	@Post( '/api/v1/pets' )
+	Public Method post() as Logical
+
+    @Put( '/api/v1/pets/:id' )
+    Public Method put() as Logical
+
+    @Delete( '/api/v1/pets/:id' )
+    Public Method delete() as Logical
+
+EndClass
+
+
+/*/{Protheus.doc} new
+    (Obtem uma nova instância da classe)
+    @author Efdéias Oliveira
+    @since 27/06/2024
+    @version 1.0
+    @return self, object, instância da classe
+    /*/
+Method new() as Object Class PetsController
+
+    ::oService := PetsService():new()
+    ::jResponse := JsonObject():new()
+
+Return self
+
+
+
+/*/{Protheus.doc} get
+	(Retorna todos os registros)
+	@author Efdéias Oliveira
+	@since 29/06/2024
+	@version 1.0
+	@return .T., logical, Verdadeiro
+	/*/
+Method get() as Logical Class PetsController
+
+    Local aFilter   as Array
+    Local cFields   as Character
+    Local cSort     as Character
+    Local nPage     as Numeric
+    Local nPageSize as Numeric
+
+	nPage     := 1
+	nPageSize := 10
+	aFilter   := {}
+	cFields   := ""
+	cSort     := ""
+
+    getQueryParam( @nPage, @nPageSize, @aFilter, @cFields, @cSort )
+
+    ::jResponse := ::oService:get( nPage, nPageSize, aFilter, cFields, cSort )
+
+	utils.rest.u_setResponse( ::jResponse )
+
+	fwFreeArray( aFilter )
+
+Return .T.
+
+
+
+/*/{Protheus.doc} getById
+	(Método responsável por consultar um item especifico pelo seu id)
+	@author Efdéias Oliveira
+	@since 28/06/2024
+	@version 1.0
+	@return .T., logical, Verdadeiro
+	/*/
+Method getById() as Logical Class PetsController
+
+	Local cId       as Character
+    Local aFilter   as Array
+    Local cFields   as Character
+    Local cSort     as Character
+    Local nPage     as Numeric
+    Local nPageSize as Numeric
+
+	nPage     := 1
+	nPageSize := 10
+	aFilter   := {}
+	cFields   := ""
+	cSort     := ""
+
+    getQueryParam( @nPage, @nPageSize, @aFilter, @cFields, @cSort )
+
+	cId := oRest:getPathParamsRequest()['id']
+
+    ::jResponse := ::oService:get( nPage, nPageSize, aFilter, cFields, cSort, cId )
+
+	utils.rest.u_setResponse( ::jResponse )
+
+	fwFreeArray( aFilter )
+
+Return .T.
+
+
+
+/*/{Protheus.doc} post
+	(Inclui um registro)
+	@author Efdéias Oliveira
+	@since 28/06/2024
+	@version 1.0
+	/*/
+Method post() as Logical Class PetsController
+
+	Local cBody as Character
+	Local jBody as Json
+
+	cBody := oRest:getBodyRequest()
+	jBody := JsonObject():new()
+
+	If ( jBody:fromJson( cBody )) == Nil
+		::jResponse := ::oService:handle( 3, jBody )
+	Else
+		::jResponse := utils.rest.u_setError( 400, "Json inválido" )
+	EndIf
+
+	utils.rest.u_setResponse( ::jResponse )
+
+Return .T.
+
+
+
+/*/{Protheus.doc} put
+	(Altera um registro)
+	@author Efdéias Oliveira
+	@since 29/06/2024
+	@version 1.0
+	/*/
+Method put() as Logical Class PetsController
+
+	Local cId   as character
+	Local cBody as Character
+	Local jBody as Json
+
+	cId   := oRest:getPathParamsRequest()['id']
+	cBody := oRest:getBodyRequest()
+	jBody := JsonObject():new()
+
+	If ( jBody:fromJson( cBody )) == Nil
+		::jResponse := ::oService:handle( 4, jBody, cId )
+	Else
+		::jResponse := utils.rest.u_setError( 400, "Json inválido" )
+	EndIf
+
+	utils.rest.u_setResponse( ::jResponse )
+
+Return .T.
+
+
+
+/*/{Protheus.doc} delete
+	(Exclui um registro)
+	@author Efdéias Oliveira
+	@since 29/06/2024
+	@version 1.0
+	/*/
+Method delete() as Logical Class PetsController
+
+	Local cId   as character
+
+	cId   := oRest:getPathParamsRequest()['id']
+	::jResponse := ::oService:handle( 5,, cId )
+
+	utils.rest.u_setResponse( ::jResponse )
+
+Return .T.
+
+
+
+
+/*/{Protheus.doc} getQueryParam
+    (Função responsável por verificar os retornos dos parâmetros)
+    @type  Static Function
+    @author Efdéias Oliveira
+    @since 27/06/2024
+    @version 1.0
+    @param nPage, numeric, Número da Pagina
+    @param nPageSize, numeric, Tamanho da página
+    @param aFilter, array, Lista de Filtros a serem realizados
+    @param cFields, character, Campos que serão retornados
+    @param cSort, character, Ordenação dos campos
+/*/
+Static Function getQueryParam( nPage as Numeric, nPageSize as Numeric, aFilter as Array, cFields as Character, cSort as Character )
+
+	If ( oRest:getQueryRequest():getJsonText( 'page' ) != 'null' )
+		nPage := val( oRest:getQueryRequest():getJsonText( 'page' ))
+	EndIf
+
+	If ( oRest:getQueryRequest():getJsonText( 'pageSize' ) != 'null' )
+		nPageSize := val( oRest:getQueryRequest():getJsonText( 'pageSize' ))
+	EndIf
+
+	If ( oRest:getQueryRequest():getJsonText( 'fields' ) != 'null' )
+		cFields := oRest:getQueryRequest():getJsonText( 'fields' )
+	EndIf
+
+	If ( oRest:getQueryRequest():getJsonText( 'sort' ) != 'null' )
+		cSort := oRest:getQueryRequest():getJsonText( 'sort' )
+	EndIf
+
+	If (oRest:getQueryRequest():getJsonText('filter') != 'null')
+		aAdd(aFilter, { 'FILTER', oRest:getQueryRequest():getJsonText('filter')})
+	EndIf
+
+	If ( oRest:getQueryRequest():getJsonText( 'name' ) != 'null' )
+		aAdd( aFilter, { 'name', oRest:getQueryRequest():getJsonText( 'name' )})
+	EndIf
+
+	If ( oRest:getQueryRequest():getJsonText( 'breed' ) != 'null' )
+		aAdd( aFilter, { 'breed', oRest:getQueryRequest():getJsonText( 'breed' )})
+	EndIf
+
+	If ( oRest:getQueryRequest():getJsonText( 'color' ) != 'null' )
+		aAdd( aFilter, { 'color', oRest:getQueryRequest():getJsonText( 'color' )})
+	EndIf
+
+	If ( oRest:getQueryRequest():getJsonText( 'sexo' ) != 'null' )
+		aAdd( aFilter, { 'sexo', oRest:getQueryRequest():getJsonText( 'sexo' )})
+	EndIf
+
+	If ( oRest:getQueryRequest():getJsonText( 'specie' ) != 'null' )
+		aAdd( aFilter, { 'specie', oRest:getQueryRequest():getJsonText( 'specie' )})
+	EndIf
+
+	If ( oRest:getQueryRequest():getJsonText( 'ownerId' ) != 'null' )
+		aAdd( aFilter, { 'ownerId', oRest:getQueryRequest():getJsonText( 'ownerId' )})
+	EndIf
+
+Return Nil
+

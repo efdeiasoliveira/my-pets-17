@@ -1,0 +1,100 @@
+#include "tlpp-core.th"
+
+namespace Pets
+
+/*/{Protheus.doc} className
+    (Manipula os dados)
+    @author user
+    @since 27/06/2024
+    @version version
+    /*/
+Class PetsService
+
+    Public Data jResponse as Json
+
+    Public Method new() as Object
+    Public Method get() as Json
+    Public Method handle() as Json
+
+EndClass
+
+
+/*/{Protheus.doc} new
+    (Obtém uma nova instância da classe)
+    @author Efdéias Oliveira
+    @since 27/06/2024
+    @version 1.0
+    /*/
+Method new() as Object Class PetsService
+
+    ::jResponse := JsonObject():new()
+
+Return Self
+
+
+
+/*/{Protheus.doc} get
+    (Retorna os registros)
+    @author Efdéias Oliveira
+    @since 27/06/2024
+    @version 1.0
+    @param nPage, numeric, Número da Pagina
+    @param nPageSize, numeric, Tamanho da página
+    @param aFilter, array, Lista de Filtros a serem realizados
+    @param cFields, character, Campos que serão retornados
+    @param cSort, character, Ordenação dos campos
+    @param cID, character, ID do registro especifico
+    @return ::jResponse, json, Json de resposta
+    /*/
+Method get( nPage as Numeric, nPageSize as Numeric, aFilter as Array, cFields as Character, cSort as Character, cID as Character ) as Json Class PetsService
+
+    Local oData as Object
+
+    Default nPage     := 1
+    Default nPageSize := 10
+    Default aFilter   := {}
+    Default cFields   := ""
+    Default cSort     := ""
+    Default cID       := ""
+
+    oData := PetsData():new( "GET", empty( cID ))
+    oData:setIsCaseSensitive(.T.)
+    oData:get( nPage, nPageSize, aFilter, cFields, cSort, cID )
+
+    If ( oData:lOk )
+        ::jResponse := oData:gtJsonObjResponse()
+    Else
+        ::jResponse := utils.rest.u_setError( oData:getCode(), oData:getMessage())
+    EndIf
+
+Return ::jResponse
+
+
+
+/*/{Protheus.doc} handle
+    (Inclui, Altera e Exclui um registro)
+    @author Efdéias Oliveira
+    @since 28/06/2024
+    @version 1.0
+    @param  nOperation, numeric, Operação
+    @param  jBody, json, JSon Body
+    @param  cId, character, ID do Registro
+    @return ::jResponse, json, JSon de Retorno
+    /*/
+Method handle( nOperation as Numeric, jBody as Json, cId as character ) as Json Class PetsService
+
+    Local oData as Object
+
+    Default nOperation := 0
+    Default jBody := JsonObject():new()
+    Default cId := ""
+
+    oData := PetsData():new( if( nOperation == 3, "POST", if( nOperation == 4, "PUT", "DELETE" )))
+    oData:setIsCaseSensitive(.T.)
+    ::jResponse := oData:handlePets( nOperation, jBody, cId )
+
+    If ( ! oData:lOk )
+        ::jResponse := utils.rest.u_setError( oData:getCode(), oData:getMessage())
+    EndIf
+
+Return ::jResponse

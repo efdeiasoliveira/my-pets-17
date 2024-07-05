@@ -1,0 +1,140 @@
+#include "tlpp-core.th"
+#include "FWMVCDEF.CH"
+
+namespace utils.rest
+
+/*/{Protheus.doc} setResponse
+(Gera o retorno da Requisição)
+@type user function
+@author Efdéias Oliveira
+@since 29/06/2024
+@version 1.0
+@param jResponse, json, Json Response
+/*/
+User Function setResponse( jResponse as Json )
+
+    oRest:setKeyHeaderResponse( 'Content-Type', 'application/json; charset-utf-8' )
+	oRest:setResponse( jResponse )
+
+Return Nil
+
+
+/*/{Protheus.doc} setError
+(Retorno o erro no formato do JSon Response)
+@type user function
+@author EFdéias Oliveira
+@since 29/06/2024
+@version 1.0
+@param nCode, numeric, Código do Erro de retorno
+@param cMessage, character, Mensagem de retorno
+@param cDetailMessage, character, Detalhe da mensagem de erro
+/*/
+User Function setError( nCode as numeric, cMessage as character, cDetailMessage as character ) as Json
+
+    Local jResponse as Json
+
+	Default nCode          := 400
+	Default cMessage       := ""
+	Default cDetailMessage := ""
+
+    jResponse := JsonObject():new()
+
+    oRest:setStatusCode( nCode )
+
+	jResponse['code'] := cValToChar( nCode )
+	jResponse['message'] := cMessage
+	jResponse['detailedMessage'] := cDetailMessage
+
+Return jResponse
+
+
+
+/*/{Protheus.doc} buildData
+    (Função que faz o de para das informações de acordo com o hashFields)
+    @type  User Function
+    @author Efdéias Oliveira
+    @since 28/06/2024
+    @version 1.0
+    @param jBody as Json, json, Body
+    @param oResource, object, Resource
+    @return aData, array , Lista
+/*/
+User Function buildData(jBody as Json, oResource as object ) as Array
+
+    Local aData   as Array
+    Local aFields as Array
+    Local cField  as Character
+    Local nField  as Numeric
+
+    aData := {}
+    aFields := {}
+
+    aFields := jBody:GetNames()
+
+    For nField := 1 To Len(aFields)
+        If oResource:oHashFields:get(aFields[nField], @cField)
+            aAdd(aData, {cField, jBody[aFields[nField]]})
+        EndIf
+    Next
+
+    fwFreeArray( aFields )
+
+Return aData
+
+
+
+/*/{Protheus.doc} getErrorMessage
+    (Realiza o tratamento de mensagem de erro do modelo de dados)
+    @type  User Function
+    @author Efdéias Oliveira
+    @since 28/06/2024
+    @version 1.0
+    @param  oModel, object, Modelo de Dados
+    @return cError, character, Mensagem de Erro tratada
+/*/
+User Function getErrorMessage( oModel as Object )
+
+    Local aError as Array
+    Local cError as Character
+    Local nError as Numeric
+
+    aError := oModel:getErrorMessage()
+
+    For nError := 1 To len( aError )
+        If ( valType( aError[ nError ]) == "C" )
+            cError += strTran( strTran( aError[ nError ], "<", "" ), "-", "" ) + (" ")
+        EndIf
+    Next
+
+Return cError
+
+
+
+/*/{Protheus.doc} setValue
+    (Função que seta os valores a serem incluídos/alterados no modelo)
+    @type  User Function
+    @author Efdéias Oliveira
+    @since 28/06/2024
+    @version 1.0
+    @param aData, array, Lista de Campos
+    @param oModelZSB, object, Modelo de Dados da Tabela
+    @param cNoFields, character, Campos que deverão ser ignorados
+    @return lReturn, logical, Campos OK
+/*/
+User Function setValue( aData as Array, oModelTAB as Object, cNoFields as Character ) as Logical
+
+    Local lReturn as Logical
+    Local nX      as Numeric
+
+    lReturn := .T.
+
+    For nX := 1 To len( aData )
+        If ( ! aData[ nX, 1 ] $ cNoFields )
+            If ( ! oModelTAB:setValue( aData[ nX, 1 ], aData[ nX, 2 ]))
+                lReturn := .F.
+                Exit
+            EndIf
+        EndIf
+    Next nX
+
+Return lReturn

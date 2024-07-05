@@ -1,0 +1,18 @@
+<po-page-default
+  p-title="Pets"
+  [p-actions]="actions"
+  [p-breadcrumb]="breadcrumb"
+>
+  <div class="po-mb-1" *ngIf="pets.items.length > 0">
+    <po-tag [p-value]="textRemainingRecords"></po-tag>
+  </div>
+  <po-table
+    [p-columns]="columns"
+    [p-items]="pets.items"
+    [p-loading]="isLoading"
+    [p-show-more-disabled]="!hasNextPage"
+    (p-show-more)="showMoreItems()"
+    [p-loading-show-more]="isLoading"
+  >
+  </po-table>
+</po-page-default>

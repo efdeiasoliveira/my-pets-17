@@ -1,0 +1,266 @@
+#include "tlpp-core.th"
+#include "FWMVCDEF.CH"
+
+namespace Pets
+
+/*/{Protheus.doc} PetsData
+    (Manipula os dados)
+    @author Efdéias Oliveira
+    @since 27/06/2024
+    @version 1.0
+    /*/
+Class PetsData From FwAdapterBaseV2
+
+    Public Data jResponse as Json
+    Public Data oHashFields as Object
+
+    Public Method new() as Object
+    Public Method get()
+    Public Method setHashFields()
+    Public Method handlePets() as Json
+
+    Public Method setResponse()
+
+EndClass
+
+
+/*/{Protheus.doc} new
+    (Obtém uma nova instância da classe)
+    @author Efdéias Oliveira
+    @since 27/06/2024
+    @version 1.0
+    @param cVerb, character, verbo da requisição HTTP
+    @param lList, logical, determina se retornará uma lista ou um registro
+    @return Self, object, estancia da classe
+    /*/
+Method new( cVerb as Character, lList as Logical ) as Object Class PetsData
+
+    Default lList := .T.
+
+    ::jResponse := JsonObject():new()
+
+    _Super:new( cVerb, lList )
+
+Return Self
+
+
+/*/{Protheus.doc} get
+    (Retorna os dados)
+    @author Efdéias Oliveira
+    @since 27/06/2024
+    @version 1.0
+    @param nPage, numeric, Número da Pagina
+    @param nPageSize, numeric, Tamanho da página
+    @param aFilter, array, Lista de Filtros a serem realizados
+    @param cFields, character, Campos que serão retornados
+    @param cSort, character, Ordenação dos campos
+    @param cId, character, ID do registro especifico
+    /*/
+Method get( nPage as Numeric, nPageSize as Numeric, aFilter as Array, cFields as Character, cSort as Character, cId as Character ) Class PetsData
+
+    Local aArea   as Array
+    Local cWhere  as Character
+
+    aArea   := fwGetArea()
+
+    cWhere := " ZSA_FILIAL = '" + fwXFilial( "ZSA" ) + "'"
+
+    If ( ! empty( cId ))
+        cWhere += " AND ZSA_ID = '" + cId + "'"
+    EndIf
+
+    cWhere += " AND ZSA.D_E_L_E_T_ = ''"
+
+    addMapFields( self )
+
+    If ( ! Empty( aFilter ))
+        ::setUrlFilter( aFilter )
+    EndIf
+
+    If ( ! Empty( cFields ))
+        ::setFields( cFields )
+    EndIf
+
+    If ( ! Empty( cSort ))
+        ::setOrderQuery( cSort )
+    EndIf
+
+    ::setPage( nPage )
+    ::setPageSize( nPageSize )
+    ::setQuery( getQuery())
+    ::setWhere( cWhere )
+    ::setOrder( "ZSA_ID" )
+
+    If ( ::execute())
+        ::fillGetResponse()
+    EndIf
+
+    fwRestArea( aArea )
+    fwFreeArray( aArea )
+
+Return Nil
+
+
+
+/*/{Protheus.doc} handlePets
+    (Inclui, altera ou exclui um registro)
+    @author Efdéias Oliveira
+    @since 28/06/2024
+    @version 1.0
+    @param nOperation, numeric, Operação
+    @param jBody, json, Body da Requisição
+    @param cId, character, ID do registro
+    @return lReturn, logical, Processo OK
+    /*/
+Method handlePets( nOperation as Numeric, jBody as Json, cId as Character ) as Json Class PetsData
+
+    Local aData     as Array
+    Local lReturn   as Logical
+    Local oModel    as Object
+    Local oModelZSA as Object
+
+    lReturn := .T.
+    ::setHashFields()
+
+    If ( nOperation <> 5 )
+        aData := utils.rest.u_buildData( jBody, self )
+    EndIf
+
+    If ( nOperation <> 3 )
+        DbSelectArea( "ZSA" )
+        DbSetOrder( 1 )
+        If ( ! MsSeek( fwXFilial( "ZSA" ) + cId ))
+            lReturn := .F.
+            ::jResponse := utils.rest.u_setError( 400, "Registro não encontrado: " + cId )
+        EndIf
+    EndIf
+
+    If ( lReturn )
+        oModel := fwLoadModel( "MPETS001" )
+        oModelZSA := oModel:getModel( "ZSAMASTER" )
+
+        oModel:setOperation( nOperation )
+
+        oModel:Activate()
+        If ( oModel:isActive())
+            If ( oModel:getOperation() <> MODEL_OPERATION_DELETE )
+                lReturn := utils.rest.u_setValue( aData, oModelZSA, "ZSA_ID,ZSB_NOME" )
+            EndIf
+        Else
+            lReturn := .F.
+        EndIf
+
+        If ( lReturn )
+            lReturn := oModel:vldData()
+        EndIf
+
+        If ( lReturn )
+            lReturn := oModel:commitData()
+        EndIf
+
+        If ( lReturn )
+            ::setResponse()
+        Else
+            ::jResponse := utils.rest.u_setError( 400, utils.rest.u_getErrorMessage( oModel ))
+        EndIf
+
+        oModel:deActivate()
+    EndIf
+
+    fwFreeObj( oModelZSA )
+    fwFreeObj( oModel )
+    fwFreeArray( aData )
+
+Return ::jResponse
+
+
+/*/{Protheus.doc} setHashFields
+    (Realiza o DePara dos campos para utilizar no MVC)
+    @author Efdéias Oliveira
+    @since 28/06/2024
+    @version 1.0
+    /*/
+Method setHashFields() Class PetsData
+
+  ::oHashFields := THashMap():new()
+
+	::oHashFields:set("id"       , "ZSA_ID"    )
+	::oHashFields:set("name"     , "ZSA_NAME"  )
+	::oHashFields:set("breed"    , "ZSA_BREED" )
+	::oHashFields:set("color"    , "ZSA_COLOR" )
+	::oHashFields:set("sexo"     , "ZSA_SEXO"  )
+	::oHashFields:set("specie"   , "ZSA_SPECIE")
+  ::oHashFields:set("ownerId"  , "ZSA_OWNER" )
+  ::oHashFields:set("ownerName", "ZSB_NOME"  )
+
+Return Nil
+
+
+
+/*/{Protheus.doc} setResponse
+    (Função responsável por montar o JSOn de retorno quando deu sucesso)
+    @type  Method
+    @author Efdéias Oliveira
+    @since 28/06/2024
+    @version 1.0
+/*/
+Method setResponse() Class PetsData
+
+    ::jResponse['id'       ] := rTrim( ZSA->ZSA_ID )
+    ::jResponse['name'     ] := fwHttpEncode( rTrim( ZSA->ZSA_NAME ))
+    ::jResponse['breed'    ] := fwHttpEncode( rTrim( ZSA->ZSA_BREED ))
+    ::jResponse['color'    ] := fwHttpEncode( rTrim( ZSA->ZSA_COLOR ))
+    ::jResponse['sexo'     ] := rTrim( ZSA->ZSA_SEXO )
+    ::jResponse['specie'   ] := fwHttpEncode( rTrim( ZSA->ZSA_SPECIE ))
+    ::jResponse['ownerId'  ] := rTrim( ZSA->ZSA_OWNER )
+    ::jResponse['ownerName'] := rTrim( ZSB->ZSB_NAME )
+
+Return Nil
+
+
+/*/{Protheus.doc} addMapFields
+    (Determina quais propriedades x campos do protheus serão apresentados)
+    @type  Static Function
+    @author Efdéias Oliveira
+    @since 27/06/2024
+    @version 1.0
+    @param oSelf, object, instancia da classe
+/*/
+Static Function addMapFields( oSelf as Object )
+
+    oSelf:addMapFields( "id"       , "ZSA_ID"    , .T., .T., { "ZSA_ID"    , 'C', tamSX3('ZSA_ID'    )[1], 0 })
+    oSelf:addMapFields( "name"     , "ZSA_NAME"  , .T., .F., { "ZSA_NAME"  , 'C', tamSX3('ZSA_NAME'  )[1], 0 })
+    oSelf:addMapFields( "breed"    , "ZSA_BREED" , .T., .F., { "ZSA_BREED" , 'C', tamSX3('ZSA_BREED' )[1], 0 })
+    oSelf:addMapFields( "color"    , "ZSA_COLOR" , .T., .F., { "ZSA_COLOR" , 'C', tamSX3('ZSA_COLOR' )[1], 0 })
+    oSelf:addMapFields( "sexo"     , "ZSA_SEXO"  , .T., .F., { "ZSA_SEXO"  , 'C', tamSX3('ZSA_SEXO'  )[1], 0 })
+    oSelf:addMapFields( "specie"   , "ZSA_SPECIE", .T., .F., { "ZSA_SPECIE", 'C', tamSX3('ZSA_SPECIE')[1], 0 })
+    oSelf:addMapFields( "ownerId"  , "ZSA_OWNER" , .T., .F., { "ZSA_OWNER" , 'C', tamSX3('ZSA_OWNER' )[1], 0 })
+    oSelf:addMapFields( "ownerName", "ZSB_NAME"  , .T., .F., { "ZSB_NAME"  , 'C', tamSX3('ZSB_NAME'  )[1], 0 })
+
+Return Nil
+
+
+
+/*/{Protheus.doc} getQuery
+    (Retorna a query de acordo com a tabela)
+    @type  Static Function
+    @author Efdéias Oliveira
+    @since 27/06/2024
+    @version 1.0
+    @param , param_type, param_descr
+    @return cQuery, character, Query
+/*/
+Static Function getQuery()
+
+    Local cQuery as Character
+
+    cQuery := " SELECT #QueryFields#"
+    cQuery += " FROM " + RetSqlTab( "ZSA" )
+    cQuery += " JOIN " + RetSqlTab( "ZSB" )
+    cQuery += "   ON ZSB_FILIAL = ZSA_FILIAL"
+    cQuery += "  AND ZSB_ID = ZSA_OWNER"
+    cQuery += "  AND ZSB.D_E_L_E_T_ = ''"
+    cQuery += " WHERE #QueryWhere#"
+
+Return cQuery
+
