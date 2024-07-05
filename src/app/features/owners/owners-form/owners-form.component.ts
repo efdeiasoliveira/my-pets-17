@@ -154,6 +154,7 @@ export class OwnersFormComponent {
       email: owner.email,
       tel1: owner.tel1,
       tel2: owner.tel2
+
     });
   }
 
