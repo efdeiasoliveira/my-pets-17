@@ -1,0 +1,80 @@
+<po-page-edit
+  [p-title]="title"
+  [p-breadcrumb]="breadcrumb"
+  [p-disable-submit]="isDisableButton"
+  [p-literals]="customLiterals"
+  (p-cancel)="cancel()"
+  (p-save)="save(false)"
+  (p-save-new)="saveOrDelete()"
+>
+  <po-loading-overlay [hidden]="!isLoading"></po-loading-overlay>
+  <form [formGroup]="ownersForm" *ngIf="ownersForm">
+    <po-container class="po-row po-xl-12">
+      <po-divider
+        p-label="Informações Pessoais"
+        p-border-width="medium"
+      ></po-divider>
+      <div class="po-row">
+          <po-input
+            class="po-xl-2"
+            p-label="Id"
+            p-disabled="true"
+            formControlName="id"
+          ></po-input>
+          <po-input
+            class="po-xl-4"
+            p-label="Nome"
+            p-required="true"
+            p-clean="true"
+            p-placeholder="Informar o nome do tutor"
+            formControlName="name"
+          ></po-input>
+          <po-input
+            class="po-xl-3"
+            p-label="RG"
+            p-required="true"
+            p-clean="true"
+            p-placeholder="Informar o RG"
+            formControlName="rg"
+          ></po-input>
+          <po-input
+            class="po-xl-3"
+            p-label="CPF"
+            p-required="true"
+            p-clean="true"
+            p-placeholder="Informar o CPF"
+            formControlName="cpf"
+          ></po-input>
+      </div>
+
+      <po-divider p-label="Informações para Contato" p-border-width="medium"></po-divider>
+      <div class="po-row">
+          <po-input
+            class="po-xl-6"
+            p-label="E-Mail"
+            p-required="true"
+            p-clean="true"
+            p-placeholder="Informar o e-mail do tutor"
+            formControlName="email"
+          ></po-input>
+          <po-input
+            class="po-xl-3"
+            p-label="Telefone 1"
+            p-required="true"
+            p-clean="true"
+            p-placeholder="Informar o telefone do tutor"
+            formControlName="tel1"
+          ></po-input>
+          <po-input
+            class="po-xl-3"
+            p-label="Telefone 2"
+            p-required="true"
+            p-clean="true"
+            p-placeholder="Informar o telefone do tutor"
+            formControlName="tel2"
+          ></po-input>
+      </div>
+
+    </po-container>
+  </form>
+</po-page-edit>
