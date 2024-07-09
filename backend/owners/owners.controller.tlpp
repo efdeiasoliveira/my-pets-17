@@ -58,21 +58,23 @@ Return self
 	/*/
 Method get() as Logical Class OwnersController
 
-  Local aFilter   as Array
-  Local cFields   as Character
-  Local cSort     as Character
-  Local nPage     as Numeric
-  Local nPageSize as Numeric
+	Local aExpand   as Array
+	Local aFilter   as Array
+	Local cFields   as Character
+	Local cSort     as Character
+	Local nPage     as Numeric
+	Local nPageSize as Numeric
 
 	nPage     := 1
 	nPageSize := 10
 	aFilter   := {}
 	cFields   := ""
 	cSort     := ""
+	aExpand   := {}
 
-  getQueryParam(@nPage, @nPageSize, @aFilter, @cFields, @cSort)
+	getQueryParam(@nPage, @nPageSize, @aFilter, @cFields, @cSort, @aExpand)
 
-  ::jResponse := ::oService:get(nPage, nPageSize, aFilter, cFields, cSort)
+	::jResponse := ::oService:get(nPage, nPageSize, aFilter, cFields, cSort, aExpand)
 
 	utils.rest.u_setResponse(::jResponse)
 
@@ -91,24 +93,26 @@ Return .T.
 	/*/
 Method getById() as Logical Class OwnersController
 
+	Local aExpand   as Array
+	Local aFilter   as Array
+	Local cFields   as Character
 	Local cId       as Character
-  Local aFilter   as Array
-  Local cFields   as Character
-  Local cSort     as Character
-  Local nPage     as Numeric
-  Local nPageSize as Numeric
+	Local cSort     as Character
+	Local nPage     as Numeric
+	Local nPageSize as Numeric
 
 	nPage     := 1
 	nPageSize := 10
 	aFilter   := {}
 	cFields   := ""
 	cSort     := ""
+	aExpand   := {}
 
-  getQueryParam(@nPage, @nPageSize, @aFilter, @cFields, @cSort)
+  	getQueryParam(@nPage, @nPageSize, @aFilter, @cFields, @cSort, @aExpand)
 
 	cId := oRest:getPathParamsRequest()['id']
 
-  ::jResponse := ::oService:get(nPage, nPageSize, aFilter, cFields, cSort, cId)
+	::jResponse := ::oService:get(nPage, nPageSize, aFilter, cFields, cSort, aExpand, cId)
 
 	utils.rest.u_setResponse(::jResponse)
 
@@ -203,51 +207,60 @@ Return .T.
     @param aFilter, array, Lista de Filtros a serem realizados
     @param cFields, character, Campos que serão retornados
     @param cSort, character, Ordenação dos campos
+	@param aExpand, array, Lista de Expansões solicitadas
 /*/
-Static Function getQueryParam(nPage as Numeric, nPageSize as Numeric, aFilter as Array, cFields as Character, cSort as Character)
+Static Function getQueryParam(nPage as Numeric, nPageSize as Numeric, aFilter as Array, cFields as Character, cSort as Character, aExpand as Array)
 
-	If (oRest:getQueryRequest():getJsonText('page') != 'null')
-		nPage := val(oRest:getQueryRequest():getJsonText('page'))
+	Local oQueryRequest as Object
+
+	oQueryRequest := oRest:getQueryRequest()
+
+	If (oQueryRequest:getJsonText('page') != 'null')
+		nPage := val(oQueryRequest:getJsonText('page'))
 	EndIf
 
-	If (oRest:getQueryRequest():getJsonText('pageSize') != 'null')
-		nPageSize := val(oRest:getQueryRequest():getJsonText('pageSize'))
+	If (oQueryRequest:getJsonText('pageSize') != 'null')
+		nPageSize := val(oQueryRequest:getJsonText('pageSize'))
 	EndIf
 
-	If (oRest:getQueryRequest():getJsonText('fields') != 'null')
-		cFields := oRest:getQueryRequest():getJsonText('fields')
+	If (oQueryRequest:getJsonText('fields') != 'null')
+		cFields := oQueryRequest:getJsonText('fields')
 	EndIf
 
-	If (oRest:getQueryRequest():getJsonText('sort') != 'null')
-		cSort := oRest:getQueryRequest():getJsonText('sort')
+	If (oQueryRequest:getJsonText('sort') != 'null')
+		cSort := oQueryRequest:getJsonText('sort')
 	EndIf
 
-	If (oRest:getQueryRequest():getJsonText('filter') != 'null')
-		aAdd(aFilter, { 'FILTER', oRest:getQueryRequest():getJsonText('filter')})
+	if (oQueryRequest:getJsonText('expand') != 'null')
+		aExpand := separa(oQueryRequest:getJsonText('expand'), ',')
+	endif
+
+	If (oQueryRequest:getJsonText('filter') != 'null')
+		aAdd(aFilter, { 'FILTER', oQueryRequest:getJsonText('filter')})
 	EndIf
 
-	If (oRest:getQueryRequest():getJsonText('name') != 'null')
-		aAdd(aFilter, { 'name', oRest:getQueryRequest():getJsonText('name')})
+	If (oQueryRequest:getJsonText('name') != 'null')
+		aAdd(aFilter, { 'name', oQueryRequest:getJsonText('name')})
 	EndIf
 
-	If (oRest:getQueryRequest():getJsonText('rg') != 'null')
-		aAdd(aFilter, { 'rg', oRest:getQueryRequest():getJsonText('rg')})
+	If (oQueryRequest:getJsonText('rg') != 'null')
+		aAdd(aFilter, { 'rg', oQueryRequest:getJsonText('rg')})
 	EndIf
 
-	If (oRest:getQueryRequest():getJsonText('cpf') != 'null')
-		aAdd(aFilter, { 'cpf', oRest:getQueryRequest():getJsonText('cpf')})
+	If (oQueryRequest:getJsonText('cpf') != 'null')
+		aAdd(aFilter, { 'cpf', oQueryRequest:getJsonText('cpf')})
 	EndIf
 
-	If (oRest:getQueryRequest():getJsonText('email') != 'null')
-		aAdd(aFilter, { 'email', oRest:getQueryRequest():getJsonText('email')})
+	If (oQueryRequest:getJsonText('email') != 'null')
+		aAdd(aFilter, { 'email', oQueryRequest:getJsonText('email')})
 	EndIf
 
-	If (oRest:getQueryRequest():getJsonText('tel1') != 'null')
-		aAdd(aFilter, { 'tel1', oRest:getQueryRequest():getJsonText('tel1')})
+	If (oQueryRequest:getJsonText('tel1') != 'null')
+		aAdd(aFilter, { 'tel1', oQueryRequest:getJsonText('tel1')})
 	EndIf
 
-	If (oRest:getQueryRequest():getJsonText('tel2') != 'null')
-		aAdd(aFilter, { 'tel2', oRest:getQueryRequest():getJsonText('tel2')})
+	If (oQueryRequest:getJsonText('tel2') != 'null')
+		aAdd(aFilter, { 'tel2', oQueryRequest:getJsonText('tel2')})
 	EndIf
 
 Return Nil
