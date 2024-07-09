@@ -1,7 +1,7 @@
 #include "tlpp-core.th"
 #include "FWMVCDEF.CH"
 
-namespace Pets
+namespace pets
 
 /*/{Protheus.doc} PetsData
     (Manipula os dados)

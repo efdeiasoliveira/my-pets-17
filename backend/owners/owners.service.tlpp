@@ -15,7 +15,7 @@ Class OwnersService
     Public Method new() as Object
     Public Method get() as Json
     Public Method handle() as Json
-    Public Method setExpandables() as Nil
+    Public Method setExpandables()
 
 EndClass
 
@@ -66,7 +66,7 @@ Method get(nPage as Numeric, nPageSize as Numeric, aFilter as Array, cFields as 
 
     If (oData:lOk)
         ::jResponse := oData:gtJsonObjResponse()
-        ::setExpandables()
+        ::setExpandables(aExpand)
     Else
         ::jResponse := utils.rest.u_setError(oData:getCode(), oData:getMessage())
     EndIf
@@ -129,7 +129,7 @@ Method setExpandables(aExpand as Array) Class OwnersService
     nY           := 0
 
     //-- Exemplo de expansões disponíveis
-    //aExpandables := {"themas","involved"}
+    //aExpandables := {"pets"}
 
 	If (!empty(aExpandables))
 
@@ -178,33 +178,45 @@ Static Function getExpand(jResponse as Json, cExpand as Character) as Json
 	Local aFilter     as Array
 	Local cFields     as Character
 	Local cSort       as Character
+    Local cSubExpand  as Character
 	Local nPage       as Numeric
 	Local nPageSize   as Numeric
+    Local nX          as Numeric
     Local oService    as Object
 
-    //--- Exemplo de uma adição de expansão
-    If (cExpand == "Themas") 
-        nPage     := 1
-        nPageSize := 100
-        aFilter   := {{"FILTER", "ownerId eq " + ::jResponse[ 'id' ]}}
-        cFields   := "code,name"
-        cSort     := "name"
-        aExpand   := If(cExpand $ ".", separa(cExpand,".")[2], {})
-        oService := ThemasService():new()
-    
-    ElseIf (cExpand == "Involved")
-        nPage     := 1
-        nPageSize := 100
-        aFilter   := {{"FILTER", "ownerId eq " + ::jResponse[ 'id' ]}}
-        cFields   := "code,name,tel1,email"
-        cSort     := "name"
-        aExpand   := If(cExpand $ ".", separa(cExpand,".")[2], {})
-        oService := InvolvedService():new()
-        
+    If (!Empty(cExpand))
+        aExpand := separa(cExpand, ".")
+
+        For nX := 1 To len(aExpand)
+            If (nX == 1)
+                cExpand := aExpand[nX]
+            Else
+                If (!empty(cSubExpand))
+                    cSubExpand += "."
+                EndIf
+                
+                cSubExpand += aExpand[nX]
+            EndIf
+        Next nX
+
+        aExpand := {}
+        If ! Empty(cSubExpand)
+            aAdd(aExpand, cSubExpand)
+        EndIf
     EndIf
 
-    jResponse := oService:get(nPage, nPageSize, aFilter, cFields, cSort, aExpand)
+    //--- Exemplo de uma adição de expansão
+    If (cExpand == "pets") 
+        nPage     := 1
+        nPageSize := 20
+        aFilter   := {{"FILTER", "ownerId eq " + jResponse[ 'id' ]}}
+        cFields   := "id,name,breed,sexo"
+        cSort     := "name"
+        oService  := pets.PetsService():new()
+        jResponse := oService:get(nPage, nPageSize, aFilter, cFields, cSort, aExpand)
+    EndIf
 
 	fwFreeArray(aFilter)
+    fwFreeArray(aExpand)
 
 Return jResponse['items']

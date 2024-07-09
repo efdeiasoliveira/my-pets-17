@@ -1,6 +1,6 @@
 #include "tlpp-core.th"
 
-namespace Pets
+namespace pets
 
 /*/{Protheus.doc} className
     (Manipula os dados)
@@ -43,10 +43,11 @@ Return Self
     @param aFilter, array, Lista de Filtros a serem realizados
     @param cFields, character, Campos que serão retornados
     @param cSort, character, Ordenação dos campos
+    @param aExpand, array, Lista de Expansões solicitadas
     @param cID, character, ID do registro especifico
     @return ::jResponse, json, Json de resposta
     /*/
-Method get( nPage as Numeric, nPageSize as Numeric, aFilter as Array, cFields as Character, cSort as Character, cID as Character ) as Json Class PetsService
+Method get( nPage as Numeric, nPageSize as Numeric, aFilter as Array, cFields as Character, cSort as Character, aExpand as Array, cID as Character ) as Json Class PetsService
 
     Local oData as Object
 

@@ -1,6 +1,6 @@
 #include "tlpp-core.th"
 
-namespace Pets
+namespace pets
 
 /*/{Protheus.doc} PetsController
     (API para Consultar, Incluir, Alterar e Excluir)
