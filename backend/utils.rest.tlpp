@@ -138,3 +138,106 @@ User Function setValue( aData as Array, oModelTAB as Object, cNoFields as Charac
     Next nX
 
 Return lReturn
+
+
+
+/*/{Protheus.doc} setExpandables
+    (Realiza a inclusão de expansíveis ao response)
+    @author Efdéias Oliveira
+    @since 08/07/2024
+    @version 1.0
+    @param  aExpand, array, Expansões solicitadas
+    /*/
+User Function setExpandables(oService as Object, aExpandables as Array, aExpand as Array)
+
+    Local aSubExpand   as Array
+    Local cExpand      as Character
+	Local jItems       as Json
+    Local jResponse    as Json
+    Local lReturn      as Logical
+	Local nX           as Numeric
+	Local nY           as Numeric
+
+    Default aExpand := {}
+
+    aSubExpand   := {}
+    jItems       := JsonObject():New()
+    jResponse    := oService:jResponse
+    lReturn      := .T.
+    nX           := 0
+    nY           := 0
+
+    If (!empty(aExpandables))
+
+        //--- Se for um get que retorna uma lista, faz um loop em todos os items
+		If (!jResponse:getJsonText('items') == "null")
+			jItems := jResponse['items']
+
+			For nX := 1 To len(jItems)
+				jItems[nX, '_expandables'] := aExpandables
+				
+				If (!empty(aExpand))
+					For nY := 1 To len(aExpand)
+                        cExpand := getSubExpand(aExpand[nY], @aSubExpand)
+                        jItems[nX, separa(aExpand[ nY ], "." )[1]] := oService:getExpand(jItems[nX], cExpand, aClone(aSubExpand))
+					Next nY
+				EndIf
+			Next nX
+
+            jResponse['items'] := jItems
+		Else
+			jResponse['_expandables'] := aExpandables
+
+			If (!empty(aExpand))
+				For nY := 1 To len(aExpand)
+                    cExpand := getSubExpand(aExpand[nY], @aSubExpand)
+                    jResponse[separa(aExpand[ nY ], "." )[1]] := oService:getExpand(jResponse, cExpand, aClone(aSubExpand))
+				Next nY
+			EndIf
+
+		EndIf
+	EndIf
+
+Return jResponse
+
+
+/*/{Protheus.doc} getSubExpand
+    (long_description)
+    @type  Static Function
+    @author Efdéias Oliveira
+    @since 10/07/2024
+    @version 1.0
+    @param cExpandOrige, character, Expansão nivel 1 e subexpansões
+    @param aSubExpand, array, SubExpansão
+    @return cExpand, character, Expansão nível 1
+    @example
+    (examples)
+    @see (links_or_references)
+/*/
+Static Function getSubExpand(cExpandOrige, aSubExpand) as Character
+
+	Local aExpand     as Array
+    Local cExpand     as Character
+    Local cSubExpand  as Character
+    Local nX          as Numeric
+
+    aExpand := separa(cExpandOrige, ".")
+
+    For nX := 1 To len(aExpand)
+        If (nX == 1)
+            cExpand := aExpand[nX]
+        Else
+            If (!empty(cSubExpand))
+                cSubExpand += "."
+            EndIf
+            
+            cSubExpand += aExpand[nX]
+        EndIf
+    Next nX
+
+    aSubExpand := {}
+    If (! empty(cSubExpand))
+        aAdd(aSubExpand, cSubExpand)
+    EndIf
+
+Return cExpand

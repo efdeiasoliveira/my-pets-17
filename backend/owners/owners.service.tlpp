@@ -15,7 +15,7 @@ Class OwnersService
     Public Method new() as Object
     Public Method get() as Json
     Public Method handle() as Json
-    Public Method setExpandables()
+    Public Method getExpand() as Json
 
 EndClass
 
@@ -50,7 +50,8 @@ Return Self
     /*/
 Method get(nPage as Numeric, nPageSize as Numeric, aFilter as Array, cFields as Character, cSort as Character, aExpand as Array, cID as Character) as Json Class OwnersService
 
-    Local oData as Object
+    Local aExpandables as Array
+    Local oData        as Object
 
     Default nPage     := 1
     Default nPageSize := 10
@@ -60,13 +61,18 @@ Method get(nPage as Numeric, nPageSize as Numeric, aFilter as Array, cFields as 
     Default aExpand   := {}
     Default cID       := ""
 
+    aExpandables := {'pets'}
+
     oData := OwnersData():new("GET", empty(cID))
     oData:setIsCaseSensitive(.T.)
     oData:get(nPage, nPageSize, aFilter, cFields, cSort, cID)
 
     If (oData:lOk)
         ::jResponse := oData:gtJsonObjResponse()
-        ::setExpandables(aExpand)
+
+        If (! empty(aExpandables))
+            utils.rest.u_setExpandables(self, aExpandables, aExpand)
+        EndIf
     Else
         ::jResponse := utils.rest.u_setError(oData:getCode(), oData:getMessage())
     EndIf
@@ -104,119 +110,37 @@ Method handle(nOperation as Numeric, jBody as Json, cId as character) as Json Cl
 Return ::jResponse
 
 
-
-/*/{Protheus.doc} setExpandables
-    (Realiza a inclusão de expansíveis ao response)
-    @author Efdéias Oliveira
-    @since 08/07/2024
-    @version 1.0
-    @param  aExpand, array, Expansões solicitadas
-    /*/
-Method setExpandables(aExpand as Array) Class OwnersService
-
-    Local aExpandables as Array
-	Local jItems       as Json
-    Local lReturn      as Logical
-	Local nX           as Numeric
-	Local nY           as Numeric
-
-    Default aExpand := {}
-
-    aExpandables := {}
-    jItems       := JsonObject():New()
-    lReturn      := .T.
-    nX           := 0
-    nY           := 0
-
-    //-- Exemplo de expansões disponíveis
-    //aExpandables := {"pets"}
-
-	If (!empty(aExpandables))
-
-        //--- Se for um get que retorna uma lista, faz um loop em todos os items
-		If (!::jResponse:getJsonText('items') == "null")
-			jItems := ::jResponse['items']
-
-			For nX := 1 To len(jItems)
-				jItems[nX, '_expandables'] := aExpandables
-				
-				If (!empty(aExpand))
-					For nY := 1 To len(aExpand)
-                        jItems[nX, separa(aExpand[ nY ], "." )[1]] := getExpand(jItems[nX], aExpand[nY])
-					Next nY
-				EndIf
-			Next nX
-
-		Else
-			::jResponse['_expandables'] := aExpandables
-
-			If (!empty(aExpand))
-				For nY := 1 To len(aExpand)
-                    ::jResponse[separa(aExpand[ nY ], "." )[1]] := getExpand(::jResponse, aExpand[nY])
-				Next nY
-			EndIf
-
-		EndIf
-	EndIf
-
-Return ::jResponse
-
-
 /*/{Protheus.doc} getExpand
     (Realiza a consulta da expansão específica para o registro posicionado)
     @type  Static Function
     @author Efdéias Oliveira
     @since 09/07/2024
     @version 1.0
-    @param jResponse, json, Response com o registro que esta sendo retornado
+    @param jResponse, json, Response com o registro espeçifico que esta sendo retornado
     @param cExpand, character, Expansão específica que esta sendo requisitada
-    @return jResponse, json, Response com o registro que esta sendo retornado
+    @return jExpand, json, Response com o registro que esta sendo retornado
 /*/
-Static Function getExpand(jResponse as Json, cExpand as Character) as Json
+Method getExpand(jResponse as Json, cExpand as Character, aExpand as Array) as Json Class OwnersService
     
-	Local aExpand     as Array
 	Local aFilter     as Array
 	Local cFields     as Character
 	Local cSort       as Character
-    Local cSubExpand  as Character
 	Local nPage       as Numeric
 	Local nPageSize   as Numeric
-    Local nX          as Numeric
     Local oService    as Object
 
-    If (!Empty(cExpand))
-        aExpand := separa(cExpand, ".")
-
-        For nX := 1 To len(aExpand)
-            If (nX == 1)
-                cExpand := aExpand[nX]
-            Else
-                If (!empty(cSubExpand))
-                    cSubExpand += "."
-                EndIf
-                
-                cSubExpand += aExpand[nX]
-            EndIf
-        Next nX
-
-        aExpand := {}
-        If ! Empty(cSubExpand)
-            aAdd(aExpand, cSubExpand)
-        EndIf
-    EndIf
-
     //--- Exemplo de uma adição de expansão
+    nPage     := 1
+    nPageSize := 20
+
     If (cExpand == "pets") 
-        nPage     := 1
-        nPageSize := 20
         aFilter   := {{"FILTER", "ownerId eq " + jResponse[ 'id' ]}}
         cFields   := "id,name,breed,sexo"
         cSort     := "name"
         oService  := pets.PetsService():new()
-        jResponse := oService:get(nPage, nPageSize, aFilter, cFields, cSort, aExpand)
+        jExpand := oService:get(nPage, nPageSize, aFilter, cFields, cSort, aExpand)
     EndIf
 
 	fwFreeArray(aFilter)
-    fwFreeArray(aExpand)
 
-Return jResponse['items']
+Return jExpand['items']
